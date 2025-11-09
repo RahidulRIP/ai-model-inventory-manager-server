@@ -25,7 +25,13 @@ app.get("/", (req, res) => {
 });
 async function run() {
   try {
+    const aiCraftDBCollection = client.db("aiCraft").collection("aiModels");
+
     // my own code start from here
+    app.get("/models", async (req, res) => {
+      const result = await aiCraftDBCollection.find().toArray();
+      res.send(result);
+    });
 
     // my own code end here
 
@@ -42,7 +48,7 @@ async function run() {
     // Ensures that the client will close when you finish/error
     // await client.close();
   }
-} 
+}
 run().catch(console.dir);
 
 app.listen(port, () => {
