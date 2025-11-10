@@ -25,11 +25,19 @@ app.get("/", (req, res) => {
 });
 async function run() {
   try {
-    const aiCraftDBCollection = client.db("aiCraft").collection("aiModels");
+    const aiModelsCollection = client.db("aiCraft").collection("aiModels");
 
     // my own code start from here
+
+    // aiModel data adding from (AddModel.jsx) 
+    app.post("/addModel", async (req, res) => {
+      const { addModelInfo } = req.body;
+      const result = await aiModelsCollection.insertOne(addModelInfo );
+      res.send(result);
+    });
+
     app.get("/models", async (req, res) => {
-      const result = await aiCraftDBCollection.find().toArray();
+      const result = await aiModelsCollection.find().toArray();
       res.send(result);
     });
 
