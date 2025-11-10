@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const app = express();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 7000;
 
 // middleWare
@@ -29,15 +29,22 @@ async function run() {
 
     // my own code start from here
 
-    // aiModel data adding from (AddModel.jsx) 
+    // aiModel data adding from (AddModel.jsx)
     app.post("/addModel", async (req, res) => {
       const { addModelInfo } = req.body;
-      const result = await aiModelsCollection.insertOne(addModelInfo );
+      const result = await aiModelsCollection.insertOne(addModelInfo);
       res.send(result);
     });
 
     app.get("/models", async (req, res) => {
       const result = await aiModelsCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/models/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await aiModelsCollection.findOne(query);
       res.send(result);
     });
 
