@@ -26,21 +26,24 @@ app.get("/", (req, res) => {
 async function run() {
   try {
     const aiModelsCollection = client.db("aiCraft").collection("aiModels");
-
-    // my own code start from here
+    const purchasedAiModelsCollection = client
+      .db("aiCraft")
+      .collection("purchasedAiModels");
 
     // aiModel data adding from (AddModel.jsx)
     app.post("/addModel", async (req, res) => {
-      const { addModelInfo } = req.body;
+      const addModelInfo = req.body;
       const result = await aiModelsCollection.insertOne(addModelInfo);
       res.send(result);
     });
 
+    // fetching  aiModels data in (AllModels.jsx) and (AIModels.jsx)
     app.get("/models", async (req, res) => {
       const result = await aiModelsCollection.find().toArray();
       res.send(result);
     });
 
+    // fetching aiModels single data from (Router.jsx) for (ModelCardDetails.jsx)
     app.get("/models/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -48,7 +51,20 @@ async function run() {
       res.send(result);
     });
 
-    // my own code end here
+    // purchased aiModels data adding from (ModelCardDetails.jsx)
+    app.post("/purchased/:id", async (req, res) => {
+      const purchasedData = req.body;
+      const id = req.params.id;
+      const result = await purchasedAiModelsCollection.insertOne(purchasedData);
+      const query = { _id: new ObjectId(id) };
+      const doc = {
+        $inc: {
+          purchased: 1,
+        },
+      };
+      const updatePurchased = await aiModelsCollection.updateOne(query, doc);
+      res.send(result, updatePurchased);
+    });
 
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
