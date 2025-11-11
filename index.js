@@ -43,6 +43,31 @@ async function run() {
       res.send(result);
     });
 
+    // ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    // fetching   aiModels data in (AllModels.jsx) for search
+    app.get("/models/search", async (req, res) => {
+      const searchValue = req.query.value.trim();
+      const result = await aiModelsCollection
+        .find({
+          name: { $regex: searchValue, $options: "i" },
+        })
+        .toArray();
+      res.send(result);
+    });
+    // ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    // fetching   aiModels data in (AllModels.jsx) for filter
+    app.get("/models/filter", async (req, res) => {
+      const filterValue = req.query.value.trim();
+      const result = await aiModelsCollection
+        .find({
+          framework: { $regex: filterValue, $options: "i" },
+        })
+        .toArray();
+      res.send(result);
+    });
+
+    // .......................................................
+
     // getting specifics ai models data that one created (MyModelsPage.jsx)
     app.get("/models/specificsModals", async (req, res) => {
       const user_email = req.query.email;
@@ -82,6 +107,14 @@ async function run() {
       res.send(result, update);
     });
 
+    // delete aiModels data  from db in (ModelCardDetails.jsx)
+    app.delete("/deleteModel/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await aiModelsCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // this patch related to (UpdatePage.jsx)
     app.patch("/updateModelData/:id", async (req, res) => {
       const id = req.params.id;
@@ -94,7 +127,7 @@ async function run() {
           useCase: data?.useCase,
           dataset: data?.dataset,
           description: data?.description,
-          imageURL: data?.imageURL,
+          image: data?.image,
           purchased: data?.purchased,
         },
       };
