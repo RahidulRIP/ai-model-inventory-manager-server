@@ -43,6 +43,22 @@ async function run() {
       res.send(result);
     });
 
+    // getting specifics ai models data that one created (MyModelsPage.jsx)
+    app.get("/models/specificsModals", async (req, res) => {
+      const user_email = req.query.email;
+      const query = { createdBy: user_email };
+      const result = await aiModelsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // getting specifics ai models purchase data  (MyModelsPurchasePage.jsx)
+    app.get("/models/specificsModalsPurchase", async (req, res) => {
+      const user_email = req.query.email;
+      const query = { purchased_By: user_email };
+      const result = await purchasedAiModelsCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // fetching aiModels single data from (Router.jsx) for (ModelCardDetails.jsx)
     app.get("/models/:id", async (req, res) => {
       const id = req.params.id;
