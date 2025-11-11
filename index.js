@@ -57,13 +57,34 @@ async function run() {
       const id = req.params.id;
       const result = await purchasedAiModelsCollection.insertOne(purchasedData);
       const query = { _id: new ObjectId(id) };
-      const doc = {
+      const purchasedCount = {
         $inc: {
           purchased: 1,
         },
       };
-      const updatePurchased = await aiModelsCollection.updateOne(query, doc);
-      res.send(result, updatePurchased);
+      const update = await aiModelsCollection.updateOne(query, purchasedCount);
+      res.send(result, update);
+    });
+
+    // this patch related to (UpdatePage.jsx)
+    app.patch("/updateModelData/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDocument = {
+        $set: {
+          name: data?.name,
+          framework: data?.framework,
+          useCase: data?.useCase,
+          dataset: data?.dataset,
+          description: data?.description,
+          imageURL: data?.imageURL,
+          purchased: data?.purchased,
+        },
+      };
+
+      const result = await aiModelsCollection.updateOne(filter, updateDocument);
+      res.send(result);
     });
 
     // Connect the client to the server	(optional starting in v4.7)
