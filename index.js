@@ -39,7 +39,10 @@ async function run() {
 
     // fetching  aiModels data in (AllModels.jsx) and (AIModels.jsx)
     app.get("/models", async (req, res) => {
-      const result = await aiModelsCollection.find().toArray();
+      const result = await aiModelsCollection
+        .find()
+        .sort({ _id: -1 })
+        .toArray();
       res.send(result);
     });
 
