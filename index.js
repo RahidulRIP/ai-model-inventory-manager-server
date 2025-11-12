@@ -3,7 +3,13 @@ const cors = require("cors");
 require("dotenv").config();
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const admin = require("firebase-admin");
+const serviceAccount = require("./serviceKey.json");
 const port = process.env.PORT || 7000;
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
 // middleWare
 app.use(cors());
@@ -20,6 +26,22 @@ const client = new MongoClient(uri, {
   },
 });
 
+const verifyToken = async (req, res, next) => {
+  const tokenWithBearer = req.headers.authorization;
+  if (!tokenWithBearer) {
+    return res.status(401).send({ message: "unauthorized access with bearer" });
+  }
+  const token = tokenWithBearer.split(" ")[1];
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(token);
+    req.token_email = decoded.email;
+    next();
+  } catch (err) {
+    return res.status(401).send({ message: "unauthorized access from catch" });
+  }
+};
+
 app.get("/", (req, res) => {
   res.send("building management site is sitting live");
 });
@@ -31,7 +53,7 @@ async function run() {
       .collection("purchasedAiModels");
 
     // aiModel data adding from (AddModel.jsx)
-    app.post("/addModel", async (req, res) => {
+    app.post("/addModel", verifyToken, async (req, res) => {
       const addModelInfo = req.body;
       const result = await aiModelsCollection.insertOne(addModelInfo);
       res.send(result);
@@ -72,20 +94,30 @@ async function run() {
     // .......................................................
 
     // getting specifics ai models data that one created (MyModelsPage.jsx)
-    app.get("/models/specificsModals", async (req, res) => {
+    app.get("/models/specificsModals", verifyToken, async (req, res) => {
       const user_email = req.query.email;
+      if (req.token_email !== user_email) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
       const query = { createdBy: user_email };
       const result = await aiModelsCollection.find(query).toArray();
       res.send(result);
     });
 
     // getting specifics ai models purchase data  (MyModelsPurchasePage.jsx)
-    app.get("/models/specificsModalsPurchase", async (req, res) => {
-      const user_email = req.query.email;
-      const query = { purchased_By: user_email };
-      const result = await purchasedAiModelsCollection.find(query).toArray();
-      res.send(result);
-    });
+    app.get(
+      "/models/specificsModalsPurchase",
+      verifyToken,
+      async (req, res) => {
+        const user_email = req.query.email;
+        if (req.token_email !== user_email) {
+          return res.status(403).send({ message: "Forbidden Access" });
+        }
+        const query = { purchased_By: user_email };
+        const result = await purchasedAiModelsCollection.find(query).toArray();
+        res.send(result);
+      }
+    );
 
     // fetching aiModels single data from (Router.jsx) for (ModelCardDetails.jsx)
     app.get("/models/:id", async (req, res) => {
@@ -140,14 +172,14 @@ async function run() {
     });
 
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
 
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
