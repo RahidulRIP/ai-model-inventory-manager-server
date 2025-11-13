@@ -143,7 +143,7 @@ async function run() {
     });
 
     // delete aiModels data  from db in (ModelCardDetails.jsx)
-    app.delete("/deleteModel/:id", async (req, res) => {
+    app.delete("/deleteModel/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await aiModelsCollection.deleteOne(query);
@@ -151,7 +151,7 @@ async function run() {
     });
 
     // this patch related to (UpdatePage.jsx)
-    app.patch("/updateModelData/:id", async (req, res) => {
+    app.patch("/updateModelData/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -178,7 +178,7 @@ async function run() {
     // await client.db("admin").command({ ping: 1 });
 
     // console.log(
-      // "Pinged your deployment. You successfully connected to MongoDB!"
+    // "Pinged your deployment. You successfully connected to MongoDB!"
     // );
   } finally {
     // Ensures that the client will close when you finish/error
