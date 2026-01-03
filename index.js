@@ -51,6 +51,7 @@ async function run() {
     const purchasedAiModelsCollection = client
       .db("aiCraft")
       .collection("purchasedAiModels");
+    const userCollection = client.db("aiCraft").collection("users");
 
     // aiModel data adding from (AddModel.jsx)
     app.post("/addModel", verifyToken, async (req, res) => {
@@ -151,7 +152,7 @@ async function run() {
     });
 
     // this patch related to (UpdatePage.jsx)
-    app.patch("/updateModelData/:id",verifyToken, async (req, res) => {
+    app.patch("/updateModelData/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -170,6 +171,163 @@ async function run() {
       const result = await aiModelsCollection.updateOne(filter, updateDocument);
       res.send(result);
     });
+
+    // new start
+    // Get User Statistics for Dashboard
+    app.get("/user-stats", verifyToken, async (req, res) => {
+      const email = req.query.email;
+      if (req.token_email !== email) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
+
+      // 1. Total models created by this user
+      const modelsCreated = await aiModelsCollection.countDocuments({
+        createdBy: email,
+      });
+
+      // 2. Total models purchased by this user
+      const modelsPurchased = await purchasedAiModelsCollection.countDocuments({
+        purchased_By: email,
+      });
+
+      // 3. Get recent activities (Last 5 purchases)
+      const recentPurchases = await purchasedAiModelsCollection
+        .find({ purchased_By: email })
+        .sort({ timestamp: -1 })
+        .limit(5)
+        .toArray();
+
+      // 4. Data for the Chart (Example: Framework distribution in their collection)
+      const frameworks = await purchasedAiModelsCollection
+        .aggregate([
+          { $match: { purchased_By: email } },
+          { $group: { _id: "$framework", count: { $sum: 1 } } },
+        ])
+        .toArray();
+
+      res.send({
+        modelsCreated,
+        modelsPurchased,
+        recentPurchases,
+        chartData: frameworks.map((item) => ({
+          name: item._id || "Unknown",
+          value: item.count,
+        })),
+      });
+    });
+
+    // dashboard admin data
+    app.get("/admin-stats", async (req, res) => {
+      try {
+        const totalUsers = await userCollection.estimatedDocumentCount();
+
+        const totalModels = await aiModelsCollection.estimatedDocumentCount();
+
+        const stats = await purchasedAiModelsCollection
+          .aggregate([
+            {
+              $group: {
+                _id: null,
+                totalRevenue: { $sum: "$price" },
+                totalSales: { $sum: 1 },
+              },
+            },
+          ])
+          .toArray();
+
+        const revenue = stats.length > 0 ? stats[0].totalRevenue : 0;
+        const salesCount = stats.length > 0 ? stats[0].totalSales : 0;
+
+        res.send({
+          totalUsers,
+          totalModels,
+          totalRevenue: revenue,
+          totalSales: salesCount,
+        });
+      } catch (error) {
+        res.status(500).send({ message: "Error fetching admin stats" });
+      }
+    });
+
+    // users collection data adding from (SignUp.jsx)
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+
+      // Check if user already exists (important for Google Sign-In)
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "User already exists", insertedId: null });
+      }
+
+      // Define the new user object with server-side defaults
+      const newUser = {
+        name: user.name,
+        email: user.email,
+        photo: user.photo,
+        role: "user", // ROLE ADDED FROM SERVER
+        createdAt: new Date(), // DATE ADDED FROM SERVER
+      };
+
+      const result = await userCollection.insertOne(newUser);
+      res.send(result);
+    });
+
+    // Fetch a single user's data (including role) by email
+    app.get("/users/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+
+      // Security check: Only let the logged-in user see their own data
+      if (req.token_email !== email) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
+
+      const query = { email: email };
+      const result = await userCollection.findOne(query);
+
+      if (!result) {
+        return res.status(404).send({ message: "User not found" });
+      }
+
+      res.send(result);
+    });
+
+    // Add a PATCH route to update profile name/photo in MongoDB
+    app.patch("/users/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const updatedData = req.body;
+      const filter = { email: email };
+      const updateDoc = {
+        $set: {
+          name: updatedData.name,
+          photo: updatedData.photo,
+        },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // --- ADMIN ONLY: GET ALL MODELS ---
+    app.get("/admin/all-models", verifyToken, async (req, res) => {
+      // Basic role check (Optional: could also check DB role here)
+      const result = await aiModelsCollection.find().toArray();
+      res.send(result);
+    });
+
+    // --- ADMIN ONLY: GET ALL PURCHASE HISTORY ---
+    app.get("/admin/all-purchases", verifyToken, async (req, res) => {
+      const result = await purchasedAiModelsCollection.find().toArray();
+      res.send(result);
+    });
+
+    // --- ADMIN ONLY: DELETE ANY MODEL ---
+    app.delete("/admin/delete-model/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await aiModelsCollection.deleteOne(query);
+      res.send(result);
+    });
+    // new end
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
