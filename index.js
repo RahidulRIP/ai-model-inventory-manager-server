@@ -327,6 +327,31 @@ async function run() {
       const result = await aiModelsCollection.deleteOne(query);
       res.send(result);
     });
+
+    // delete purchase log from db by admin
+    app.delete("/admin/delete-purchase/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+
+        // Attempting to delete the purchase log from the database
+        const result = await purchasedAiModelsCollection.deleteOne(query);
+
+        if (result.deletedCount === 1) {
+          res.status(200).send({
+            deletedCount: 1,
+            message: "Purchase record successfully purged.",
+          });
+        } else {
+          res.status(404).send({ message: "Record not found in database." });
+        }
+      } catch (error) {
+        res
+          .status(500)
+          .send({ message: "Internal Server Error", error: error.message });
+      }
+    });
+
     // new end
 
     // Connect the client to the server	(optional starting in v4.7)
@@ -336,7 +361,7 @@ async function run() {
     // await client.db("admin").command({ ping: 1 });
 
     // console.log(
-    // "Pinged your deployment. You successfully connected to MongoDB!"
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
     // );
   } finally {
     // Ensures that the client will close when you finish/error
